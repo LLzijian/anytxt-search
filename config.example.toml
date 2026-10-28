@@ -22,3 +22,16 @@ target_keyword = "关键词A"
 or_keywords = ["关键词B1", "关键词B2", "关键词B3"]
 drives = ["C:/", "D:/"]
 output_file = "combo_search_result.txt"
+
+# scripts/batch_search.py 批量关键词检索配置
+# 搜索范围缺省沿用 [search] default_drives，可用下方 drives 覆盖
+[batch_search]
+keywords = ["关键词1", "关键词2", "关键词3"]
+# 白名单目录：命中文件位于这些目录（含子目录）时不计入结果
+# 注意：TOML 中含反斜杠的 Windows 路径必须用单引号字面量写法
+whitelist_dirs = [
+    'D:\some\trusted\dir1',
+    'E:\some\trusted\dir2',
+]
+# 同时命中多个关键词的文件单独列出（默认 3）
+# multi_hit_threshold = 3

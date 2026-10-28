@@ -4,7 +4,7 @@
 
 本项目是一个面向 Windows 本地环境的 Anytxt 全文搜索工具集，通过 HTTP JSON-RPC 2.0 调用 Anytxt 桌面程序（`ATGUI.exe`）提供的接口。项目本身不建立或维护搜索引擎服务，也不直接解析文档；搜索、片段提取、索引同步和 OCR 均依赖本机正在运行的 Anytxt。
 
-项目结构为：核心包 `anytxt/`（客户端、数据模型、异常、配置、CLI）+ 兼容入口 `anytxt_client.py` + 配置驱动的专用脚本 `scripts/combo_search.py`。个人化配置（服务地址、盘符、关键词）全部放在 `config.toml`（不入库），仓库中只提交 `config.example.toml` 模板。
+项目结构为：核心包 `anytxt/`（客户端、数据模型、异常、配置、CLI）+ 兼容入口 `anytxt_client.py` + 配置驱动的专用脚本（`scripts/combo_search.py`、`scripts/batch_search.py`）。个人化配置（服务地址、盘符、关键词）全部放在 `config.toml`（不入库），仓库中只提交 `config.example.toml` 模板。
 
 ## 目录与模块
 
@@ -18,6 +18,7 @@
   - `__main__.py`：支持 `python -m anytxt ...`。
 - `anytxt_client.py`：兼容入口薄封装，转发到 `anytxt.cli.main()`，兼容既有用法 `python anytxt_client.py ...`。
 - `scripts/combo_search.py`：组合关键词搜索脚本（`目标关键词 AND (任一备选关键词)`），关键词、盘符、输出名全部来自 `config.toml` 的 `[combo_search]` 节；有 `main()` 函数和 `if __name__ == "__main__"` 保护，可安全导入。
+- `scripts/batch_search.py`：批量关键词检索脚本（按一组关键词跨盘检索并生成汇总报告），关键词、盘符、白名单目录全部来自 `config.toml` 的 `[batch_search]` 节，白名单目录（含子目录）中的命中不计入报告；有 `main()` 函数和 `if __name__ == "__main__"` 保护，可安全导入。
 - `config.example.toml`：配置模板（入库）；`config.toml`：本地个人配置（gitignore）。
 - `requirements.txt`：唯一依赖声明，仅包含 `requests>=2.28.0`。
 
@@ -108,13 +109,13 @@ python -m anytxt -o ocr_result.txt ocr -i "D:\\image.png"
 项目目前没有自动化测试或测试框架，也没有可离线运行的 RPC 测试替身。基础语法和 CLI 验证可使用：
 
 ```bash
-python -m py_compile anytxt/*.py anytxt_client.py scripts/combo_search.py
+python -m py_compile anytxt/*.py anytxt_client.py scripts/combo_search.py scripts/batch_search.py
 python -m anytxt --help
 ```
 
 涉及 RPC 的修改需要在 Anytxt 实际运行且相关目录已建立索引的环境中做端到端验证。优先用限定目录和明确关键词的小范围查询，分别检查返回数量、文件记录字段、分页边界、片段响应及 UTF-8 输出；`intersect` 还应验证多关键词交集和默认多盘符行为。连接错误场景可用 `--url http://127.0.0.1:19999` 指向错误端口验证退出码与错误报告。
 
-`scripts/combo_search.py` 可以安全导入做无副作用检查（不会立即执行搜索），但实际运行会按配置跨盘发起多轮搜索并覆盖配置的输出文件，验证时注意范围。
+`scripts/combo_search.py` 与 `scripts/batch_search.py` 均可安全导入做无副作用检查（不会立即执行搜索），但实际运行会按配置跨盘发起多轮搜索并覆盖配置的输出文件，验证时注意范围。
 
 ## 安全与隐私
 

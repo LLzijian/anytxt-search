@@ -20,6 +20,8 @@
 
 另有 `scripts/combo_search.py` 组合关键词搜索脚本：`目标关键词 AND (备选关键词1 OR 备选关键词2 OR ...)`，适合批量筛查场景。
 
+另有 `scripts/batch_search.py` 批量关键词检索脚本：按一组关键词跨盘全文检索并生成汇总报告，白名单目录（含子目录）中的命中自动剔除，适合批量筛查场景。
+
 ## 环境要求
 
 - Windows + 已安装并运行 Anytxt Searcher（启用 HTTP 服务，默认端口 9920）
@@ -53,6 +55,14 @@ target_keyword = "关键词A"
 or_keywords = ["关键词B1", "关键词B2"]
 drives = ["C:/", "D:/"]
 output_file = "combo_search_result.txt"
+
+[batch_search]                       # scripts/batch_search.py 专用（批量关键词检索）
+keywords = ["关键词1", "关键词2"]      # 必填：参与检索的关键词
+whitelist_dirs = [                    # 白名单目录：命中文件位于其中（含子目录）时不计入结果
+    'D:\trusted\dir1',                # 注意：含反斜杠的路径必须用单引号字面量
+    'E:\trusted\dir2',
+]
+multi_hit_threshold = 3               # 同时命中多个关键词的文件单独列出（默认 3）
 ```
 
 - 配置文件缺省时全部使用内置默认值，不配置也能用。
@@ -117,6 +127,22 @@ python -m anytxt ocr -i "D:\image.png"
 python scripts/combo_search.py
 ```
 
+### 批量关键词检索脚本（支持白名单）
+
+在 `config.toml` 的 `[batch_search]` 节配置关键词和**白名单目录**后：
+
+```bash
+python scripts/batch_search.py                # 按白名单检索
+python scripts/batch_search.py --no-whitelist # 忽略白名单，输出全量命中（对照用）
+python scripts/batch_search.py -o report.txt  # 指定输出文件
+```
+
+- 搜索范围缺省沿用 `[search] default_drives`，可用 `[batch_search] drives` 覆盖。
+- 白名单按**目录边界前缀匹配**（忽略大小写），目录本身及其全部子目录中的命中都会被剔除，`D:\Documents` 不会误匹配 `D:\Documents2`。
+- 报告包含：各关键词命中数（含白名单剔除数）、盘符分布、同时命中多个关键词的文件、各关键词明细（路径 | 修改时间 | 大小 | FID）和白名单剔除统计。
+- 命中仅表示文件内容或名称包含关键词，需人工复核确认。
+- TOML 中含反斜杠的 Windows 路径必须用单引号字面量写法（`'D:\dir'`），双引号会把 `\` 当转义符导致解析错误。
+
 ### 作为 Python 库使用
 
 ```python
@@ -142,7 +168,8 @@ if client.ping():
 │   └── __main__.py        #   支持 python -m anytxt
 ├── anytxt_client.py       # 兼容入口（转发到 anytxt.cli）
 ├── scripts/
-│   └── combo_search.py    # 组合关键词搜索脚本（配置驱动）
+│   ├── combo_search.py    # 组合关键词搜索脚本（配置驱动）
+│   └── batch_search.py    # 批量关键词检索脚本（配置驱动，支持白名单）
 ├── config.example.toml    # 配置模板
 ├── requirements.txt
 └── AGENTS.md              # 面向 AI 协作的项目说明
