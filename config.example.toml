@@ -1,0 +1,24 @@
+# Anytxt 全文搜索工具集 - 配置模板
+# 使用方法：复制本文件为 config.toml 并按需修改。
+# config.toml 已在 .gitignore 中排除，不会提交到仓库。
+# 也可用环境变量 ANYTXT_CONFIG 指定其他位置的配置文件。
+
+# Anytxt 服务连接配置
+[server]
+# Anytxt 桌面程序（ATGUI.exe）的 HTTP JSON-RPC 服务地址
+base_url = "http://127.0.0.1:9920"
+# 请求超时秒数
+timeout = 30
+
+# 搜索行为配置
+[search]
+# intersect 命令不显式指定 -d 目录时依次搜索的盘符/目录
+default_drives = ["C:/", "D:/", "E:/", "F:/"]
+
+# scripts/combo_search.py 组合关键词搜索配置
+# 匹配条件: target_keyword AND (or_keywords 中任意一个)
+[combo_search]
+target_keyword = "关键词A"
+or_keywords = ["关键词B1", "关键词B2", "关键词B3"]
+drives = ["C:/", "D:/"]
+output_file = "combo_search_result.txt"

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 本地配置（含个人关键词、路径，不提交）
+config.toml
+
+# 搜索结果输出（含本地路径等敏感信息）
+results_*.txt
+*_search_result.txt
+*_search.txt
+combo_search_result.txt
+search_result.txt
+
+# 杂项
+nul
