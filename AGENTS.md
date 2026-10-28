@@ -13,7 +13,8 @@
   - `exceptions.py`：异常体系。`AnytxtError`（基类）、`AnytxtConnectionError`（连接失败/超时）、`AnytxtRPCError`（响应含 error）。
   - `config.py`：`load_config()`，用标准库 `tomllib` 读取项目根目录 `config.toml`；环境变量 `ANYTXT_CONFIG` 可指定其他路径；文件缺失返回空字典。
   - `client.py`：`AnytxtClient`。使用 `requests.Session` 复用连接；`base_url` 自动补 `http://` 前缀；base_url/timeout 的解析优先级为：构造参数 > `config.toml [server]` > 内置默认值（`http://127.0.0.1:9920`、30 秒）。方法：`ping()`、`search()`、`get_result()`（返回 `List[FileRecord]`）、`iter_result_all()`（每页 1000 自动翻页、按路径去重的生成器）、`get_result_all()`（返回路径集合）、`get_fragment()` / `get_fragment_all()`（返回片段文本列表 `List[str]`）、`sync_index()`、`ocr()`。
-  - `cli.py`：命令行入口 `main()`，实现 `search`、`results`、`intersect`、`fragment`、`sync`、`ocr` 六个子命令。`intersect` 默认盘符来自 `[search] default_drives`。
+  - `report.py`：`format_records()` 将 `FileRecord` 列表渲染为 txt（默认中文报告）、csv（带 BOM，Excel 可直接打开）或 json（对象数组）；`--with-fragment` 的片段预览也在此渲染（txt 每文件前 2 条、截断 200 字符）。
+  - `cli.py`：命令行入口 `main()`，实现 `search`、`results`、`intersect`、`union`、`exclude`、`fragment`、`open`、`sync`、`ocr` 九个子命令。`intersect`/`union`/`exclude` 共用 `_per_drive_sets()` 的多盘符逻辑（默认盘符来自 `[search] default_drives`），非静默时打印每个盘符/关键词的进度。
   - `__main__.py`：支持 `python -m anytxt ...`。
 - `anytxt_client.py`：兼容入口薄封装，转发到 `anytxt.cli.main()`，兼容既有用法 `python anytxt_client.py ...`。
 - `scripts/combo_search.py`：组合关键词搜索脚本（`目标关键词 AND (任一备选关键词)`），关键词、盘符、输出名全部来自 `config.toml` 的 `[combo_search]` 节；有 `main()` 函数和 `if __name__ == "__main__"` 保护，可安全导入。
@@ -58,17 +59,22 @@ python anytxt_client.py --help # 兼容入口，等价
 常用命令示例：
 
 ```bash
-# 查询匹配文件数量
-python -m anytxt -o results.txt search "关键字" -d "C:\\"
+# 查询匹配文件数量（--days/--since 提供人性化时间过滤）
+python -m anytxt -o results.txt search "关键字" -d "C:\\" --days 30
 
-# 获取文件列表
+# 获取文件列表（--format csv|json 导出；--with-fragment 附带片段预览）
 python -m anytxt -o results.txt results "关键字" -d "C:\\" -l 100
 
-# 查询同时包含全部关键词的文件
+# 多关键词交集 / 并集 / 排除
 python -m anytxt -o results.txt intersect "关键词1" "关键词2" -d "D:\\"
+python -m anytxt -o results.txt union "关键词1" "关键词2"
+python -m anytxt -o results.txt exclude "主关键词" "排除词"
 
 # 获取指定 FID 的匹配片段；加 --all 获取全部片段
 python -m anytxt -o fragments.txt fragment -f "文件FID" "关键字"
+
+# 打开文件 / 在资源管理器中定位
+python -m anytxt open --select "D:\\path\\file.pdf"
 
 # 同步文件夹索引
 python -m anytxt -o sync_result.txt sync -f "D:\\Documents"
@@ -82,7 +88,8 @@ python -m anytxt -o ocr_result.txt ocr -i "D:\\image.png"
 - 全局参数 `-o/--output`、`-q/--quiet`、`--url`、`--timeout` 应放在子命令之前。`results` 子命令的分页偏移参数为 `--offset`。
 - 未指定输出文件时，所有子命令都会使用当前目录下的 `results_YYYYMMDD_HHMMSS.txt`。
 - 正常结果以 UTF-8 覆盖写入；`--quiet` 只抑制状态输出，不改变文件写入行为。
-- `intersect` 在目录保持默认值 `C:\` 时按 `[search] default_drives`（默认 C/D/E/F 盘）依次搜索；显式指定其他目录时只搜索该目录。
+- `intersect`/`union`/`exclude` 在目录保持默认值 `C:\` 时按 `[search] default_drives`（默认 C/D/E/F 盘）依次搜索；显式指定其他目录时只搜索该目录。
+- `open --select` 通过 `shell=True` 经 cmd 拉起 `explorer /select`（部分环境下直接 CreateProcess explorer.exe 会被拒绝访问）。
 - CLI 捕获连接、超时及 RPC 错误，将错误写入输出文件并**以退出码 1 结束**；成功时退出码为 0。可依赖进程退出码判断搜索是否成功。
 - `scripts/combo_search.py` 用 `python scripts/combo_search.py` 运行（在项目根目录下执行），复用 `get_result_all()` 自动翻页，不受单次 limit 截断影响；未配置 `[combo_search]` 时退出码 1 并提示。
 

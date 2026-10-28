@@ -35,10 +35,12 @@ def main() -> int:
 
     try:
         for drive in drives:
+            print(f'正在搜索 {drive} 关键词 {target_keyword} ...')
             target_files = client.get_result_all(target_keyword, drive)
 
             or_files = set()
             for kw in or_keywords:
+                print(f'正在搜索 {drive} 关键词 {kw} ...')
                 or_files |= client.get_result_all(kw, drive)
 
             all_results[drive] = sorted(target_files & or_files)

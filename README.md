@@ -9,9 +9,12 @@
 | 命令 | 功能 |
 | --- | --- |
 | `search` | 查询匹配关键词的文件数量 |
-| `results` | 获取匹配文件列表（路径、FID、大小、修改时间），支持分页 |
+| `results` | 获取匹配文件列表（路径、FID、大小、修改时间），支持分页、CSV/JSON 导出、片段预览 |
 | `intersect` | 查找同时包含全部关键词的文件（默认跨盘搜索，可配置） |
+| `union` | 查找匹配任一关键词的文件（并集） |
+| `exclude` | 查找包含主关键词但不含任一排除词的文件 |
 | `fragment` | 按 FID 提取文件中关键词命中的正文片段 |
+| `open` | 打开文件或在资源管理器中定位 |
 | `sync` | 通知 Anytxt 同步指定文件夹的索引 |
 | `ocr` | 调用 Anytxt OCR 识别图片中的文字 |
 
@@ -67,17 +70,26 @@ python anytxt_client.py --help # 兼容入口，等价
 常用示例：
 
 ```bash
-# 查询匹配文件数量
-python -m anytxt -o results.txt search "关键字" -d "C:\"
+# 查询匹配文件数量（只看最近 30 天修改的）
+python -m anytxt -o results.txt search "关键字" -d "C:\" --days 30
 
-# 获取文件列表（前 100 条）
-python -m anytxt -o results.txt results "关键字" -d "C:\" -l 100
+# 获取文件列表（前 100 条），支持 --format csv|json 导出（CSV 带 BOM，Excel 可直接打开）
+python -m anytxt -o results.csv results "关键字" -d "C:\" -l 100 --format csv
 
-# 多关键词交集搜索（不显式指定 -d 时按配置跨盘搜索）
+# 文件列表附带每个文件的命中片段预览
+python -m anytxt -o results.txt results "关键字" -d "C:\" -l 10 --with-fragment
+
+# 多关键词交集 / 并集 / 排除搜索（不显式指定 -d 时按配置跨盘搜索）
 python -m anytxt -o results.txt intersect "关键词1" "关键词2"
+python -m anytxt -o results.txt union "关键词1" "关键词2"
+python -m anytxt -o results.txt exclude "主关键词" "排除词1" "排除词2"
 
 # 提取文件中的关键词命中片段（FID 来自 results 输出）
 python -m anytxt -o fragments.txt fragment -f "文件FID" "关键字" --all
+
+# 打开文件 / 在资源管理器中定位
+python -m anytxt open "D:\path\file.pdf"
+python -m anytxt open --select "D:\path\file.pdf"
 
 # 同步文件夹索引
 python -m anytxt sync -f "D:\Documents"
@@ -85,6 +97,11 @@ python -m anytxt sync -f "D:\Documents"
 # OCR 识别图片文字
 python -m anytxt ocr -i "D:\image.png"
 ```
+
+时间过滤参数（`search`/`results`/`intersect`/`union`/`exclude` 均支持）：
+
+- `--since 2025-01-01`（或 `2025-01-01 08:30`）：起始修改时间，覆盖 `--begin`。
+- `--days 30`：只查最近 N 天修改的文件，覆盖 `--begin`。
 
 注意事项：
 
@@ -120,6 +137,7 @@ if client.ping():
 │   ├── exceptions.py      #   异常体系
 │   ├── config.py          #   配置加载（config.toml）
 │   ├── client.py          #   AnytxtClient（RPC 封装、自动翻页）
+│   ├── report.py          #   结果渲染（txt / csv / json）
 │   ├── cli.py             #   命令行入口
 │   └── __main__.py        #   支持 python -m anytxt
 ├── anytxt_client.py       # 兼容入口（转发到 anytxt.cli）
